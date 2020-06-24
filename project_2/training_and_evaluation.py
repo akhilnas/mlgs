@@ -44,21 +44,19 @@ def train_model(model: nn.Module, dataset: Dataset, batch_size: int, loss_functi
         train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         for x,y in tqdm(iter(train_loader), total=num_train_batches):
             ##########################################################
-            # YOUR CODE HERE            
-            loss, logits = loss_function(x,y,model)
+            # YOUR CODE HERE
+            x = x.to(model.device())
+            loss,logits = loss_function(x,y,model,**loss_args)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            losses.append(loss)
+            avg_loss = loss/(x.size(0))
+            losses.append(avg_loss)
             
-            # Accuracy Calculation
-            correct_samples = 0
-            for k in range(len(y)):
-                if max(logits[k,:]) == logits[k,y[k]]:
-                    correct_samples += 1
-            accuracy = correct_samples/len(y)
-            accuracies.apend(accuracy)
-            
+            pred = logits.max(1, keepdim=True)[1] # get the index of the max logit value
+            correct = pred.eq(y.view_as(pred)).sum().item()
+            avg_correct = correct/(x.size(0))
+            accuracies.append(avg_correct)
             ##########################################################
     return losses, accuracies
 
@@ -94,8 +92,21 @@ def predict_model(model: nn.Module, dataset: Dataset, batch_size: int, attack_fu
     for x, y in tqdm(iter(test_loader), total=num_batches):
         ##########################################################
         # YOUR CODE HERE
-        ...
-        ##########################################################        
+        x = x.to(model.device())
+        x.requires_grad = True
+        logits = model(x).cpu()
+        model.zero_grad()
+        
+        if attack_function is not None:
+            x_pert = attack_function(logits, x, y, attack_args["epsilon"], attack_args["norm"])
+            logits = model(x_pert).cpu()
+            
+        pred = logits.max(1, keepdim=True)[1]
+        predictions.append(pred)
+        
+        y = y.view_as(pred)          #shape [1000,1]
+        targets.append(y)
+        ##########################################################
     predictions = torch.cat(predictions)
     targets = torch.cat(targets)
     accuracy = (predictions == targets).float().mean().item()
@@ -148,7 +159,36 @@ def evaluate_robustness_smoothing(base_classifier: nn.Module, sigma: float, data
     for x, y in tqdm(iter(test_loader), total=len(dataset)):
         ##########################################################
         # YOUR CODE HERE
-        ...
+        x = x.to(model.device())
+        pred=model.predict(x, num_samples_1, alpha, batch_size=128)
+        top_class, radius=model.certify(x, num_samples_1, num_samples_2, alpha, batch_size=certification_batch_size)
+        
+        if top_class==-1: #cant certify
+                abstains +=1
+        
+        elif pred==y:  #can certify and is correct
+                correct_certified +=1
+                radii.append(radius)
+        else:
+                false_predictions +=1 #can certify but is incorrect
+                radii.append(0)
+        # for i in range(x.shape[0]):
+        #     x1=x[i,...].reshape((1,x.shape[1], x.shape[2], x.shape[3]))
+        #     y1=y[i]
+        
+        #     pred=model.predict(x1, num_samples_1, alpha, batch_size=certification_batch_size)
+        #     top_class, radius=model.certify(x1, num_samples_1, num_samples_2, alpha, batch_size=certification_batch_size)
+        
+        #     if top_class==-1: #cant certify
+        #         abstains +=1
+        
+        #     elif pred==y1:  #can certify and is correct
+        #         correct_certified +=1
+        #         radii.append(radius)
+        #     else:
+        #         false_predictions +=1 #can certify but is incorrect
+        #         radii.append(radius)
+        
         ##########################################################
     avg_radius = torch.tensor(radii).mean().item()
     return dict(abstains=abstains, false_predictions=false_predictions, correct_certified=correct_certified,

@@ -34,13 +34,16 @@ def fast_gradient_attack(logits: torch.Tensor, x: torch.Tensor, y: torch.Tensor,
 
     ##########################################################
     # YOUR CODE HERE
-    # Calculation of Gradient of Loss Function
     loss = loss_fn(logits,y)
-    grad = loss.backward()
+    loss.backward(retain_graph=True)
     
-    # Updating Pertubation
-    clipped_value = epsilon/(torch.norm(grad, p=norm)
-    x_pert = x - clipped_value * grad
+    if(norm =="2"):
+      x_pert = x + (epsilon/x.size(2))*x.grad.sign()
+      
+    elif(norm =="inf"):
+      x_pert = x + epsilon*x.grad.sign()
+      
+    x_pert = torch.clamp(x_pert, 0, 1)
     ##########################################################
 
     return x_pert.detach()

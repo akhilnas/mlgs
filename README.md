@@ -1,5 +1,5 @@
 # mlgs
-Exercises for the TUM course - Machine Learning for Graphs and Sequential Data
+Exercises for the TUM course - Machine Learning for Graphs and Sequential Data.
 
 This repository contains the assignment submissions for the course MLGS (Summer Semester 2020).
 

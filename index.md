@@ -10,3 +10,8 @@ This repository contains the assignment submissions for the course MLGS (Summer 
 4. Spectral Clustering
 5. Graph Neural Networks
 
+### Team Members
+
+1. Akhil Nasser
+2. Madhan Ravuru
+3. Sagar Garg
